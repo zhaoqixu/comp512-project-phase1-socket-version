@@ -1,7 +1,11 @@
-import ResInterface.*;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
-import java.rmi.RMISecurityManager;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.ObjectOutputStream;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.Date;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 
 import java.util.*;
 import java.io.*;
@@ -10,9 +14,8 @@ import java.io.*;
 public class client
 {
     static String message = "blank";
-    static ResourceManager rm = null;
 
-    public static void main(String args[])
+    public static void main(String args[]) throws IOException
     {
         client obj = new client();
         BufferedReader stdin = new BufferedReader(new InputStreamReader(System.in));
@@ -28,6 +31,7 @@ public class client
         int numRooms;
         int numCars;
         String location;
+        String positive_res = "false";
 
 
         String server = "localhost";
@@ -45,37 +49,14 @@ public class client
             System.out.println ("Usage: java client [rmihost [rmiport]]");
             System.exit(1);
         }
-        
-        try 
-        {
-            // get a reference to the rmiregistry
-            Registry registry = LocateRegistry.getRegistry(server, port);
-            // get the proxy and the remote reference by rmiregistry lookup
-            rm = (ResourceManager) registry.lookup("MyGroupResourceManager");
-            if(rm!=null)
-            {
-                System.out.println("Successful");
-                System.out.println("Connected to RM");
-            }
-            else
-            {
-                System.out.println("Unsuccessful");
-            }
-            // make call on remote method
-        } 
-        catch (Exception e) 
-        {    
-            System.err.println("Client exception: " + e.toString());
-            e.printStackTrace();
-        }
-        
-        
-        
-        if (System.getSecurityManager() == null) {
-            //System.setSecurityManager(new RMISecurityManager());
-        }
 
-        
+        //establish a socket with a server using the given port
+        Socket socket = new Socket(server, port);
+        // open an output stream to the server...
+        ObjectOutputStream outToServer = new ObjectOutputStream(socket.getOutputStream());
+        // open an input stream from the server...
+        BufferedReader inFromServer = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+
         System.out.println("\n\n\tClient Interface");
         System.out.println("Type \"help\" for list of supported commands");
         while(true){
@@ -114,11 +95,12 @@ public class client
             System.out.println("Set Flight Price: "+arguments.elementAt(4));
             
             try{
-            Id = obj.getInt(arguments.elementAt(1));
-            flightNum = obj.getInt(arguments.elementAt(2));
-            flightSeats = obj.getInt(arguments.elementAt(3));
-            flightPrice = obj.getInt(arguments.elementAt(4));
-            if(rm.addFlight(Id,flightNum,flightSeats,flightPrice))
+            // Id = obj.getInt(arguments.elementAt(1));
+            // flightNum = obj.getInt(arguments.elementAt(2));
+            // flightSeats = obj.getInt(arguments.elementAt(3));
+            // flightPrice = obj.getInt(arguments.elementAt(4));
+            outToServer.writeObject(arguments);
+            if(inFromServer.readLine() == positive_res)
                 System.out.println("Flight added");
             else
                 System.out.println("Flight could not be added");
@@ -140,11 +122,12 @@ public class client
             System.out.println("Add Number of Cars: "+arguments.elementAt(3));
             System.out.println("Set Price: "+arguments.elementAt(4));
             try{
-            Id = obj.getInt(arguments.elementAt(1));
-            location = obj.getString(arguments.elementAt(2));
-            numCars = obj.getInt(arguments.elementAt(3));
-            price = obj.getInt(arguments.elementAt(4));
-            if(rm.addCars(Id,location,numCars,price))
+            // Id = obj.getInt(arguments.elementAt(1));
+            // location = obj.getString(arguments.elementAt(2));
+            // numCars = obj.getInt(arguments.elementAt(3));
+            // price = obj.getInt(arguments.elementAt(4));
+            outToServer.writeObject(arguments);
+            if(inFromServer.readLine() == positive_res)
                 System.out.println("Cars added");
             else
                 System.out.println("Cars could not be added");
@@ -166,11 +149,12 @@ public class client
             System.out.println("Add Number of Rooms: "+arguments.elementAt(3));
             System.out.println("Set Price: "+arguments.elementAt(4));
             try{
-            Id = obj.getInt(arguments.elementAt(1));
-            location = obj.getString(arguments.elementAt(2));
-            numRooms = obj.getInt(arguments.elementAt(3));
-            price = obj.getInt(arguments.elementAt(4));
-            if(rm.addRooms(Id,location,numRooms,price))
+            // Id = obj.getInt(arguments.elementAt(1));
+            // location = obj.getString(arguments.elementAt(2));
+            // numRooms = obj.getInt(arguments.elementAt(3));
+            // price = obj.getInt(arguments.elementAt(4));
+            outToServer.writeObject(arguments);
+            if(inFromServer.readLine() == positive_res)
                 System.out.println("Rooms added");
             else
                 System.out.println("Rooms could not be added");
@@ -189,8 +173,9 @@ public class client
             }
             System.out.println("Adding a new Customer using id:"+arguments.elementAt(1));
             try{
-            Id = obj.getInt(arguments.elementAt(1));
-            int customer=rm.newCustomer(Id);
+            // Id = obj.getInt(arguments.elementAt(1));
+            outToServer.writeObject(arguments);
+            String customer=inFromServer.readLine();
             System.out.println("new customer id:"+customer);
             }
             catch(Exception e){
@@ -208,9 +193,10 @@ public class client
             System.out.println("Deleting a flight using id: "+arguments.elementAt(1));
             System.out.println("Flight Number: "+arguments.elementAt(2));
             try{
-            Id = obj.getInt(arguments.elementAt(1));
-            flightNum = obj.getInt(arguments.elementAt(2));
-            if(rm.deleteFlight(Id,flightNum))
+            // Id = obj.getInt(arguments.elementAt(1));
+            // flightNum = obj.getInt(arguments.elementAt(2));
+            outToServer.writeObject(arguments);
+            if(inFromServer.readLine() == positive_res)
                 System.out.println("Flight Deleted");
             else
                 System.out.println("Flight could not be deleted");
@@ -230,10 +216,11 @@ public class client
             System.out.println("Deleting the cars from a particular location  using id: "+arguments.elementAt(1));
             System.out.println("Car Location: "+arguments.elementAt(2));
             try{
-            Id = obj.getInt(arguments.elementAt(1));
-            location = obj.getString(arguments.elementAt(2));
+            // Id = obj.getInt(arguments.elementAt(1));
+            // location = obj.getString(arguments.elementAt(2));
             
-            if(rm.deleteCars(Id,location))
+            outToServer.writeObject(arguments);
+            if(inFromServer.readLine() == positive_res)
                 System.out.println("Cars Deleted");
             else
                 System.out.println("Cars could not be deleted");
@@ -253,9 +240,9 @@ public class client
             System.out.println("Deleting all rooms from a particular location  using id: "+arguments.elementAt(1));
             System.out.println("Room Location: "+arguments.elementAt(2));
             try{
-            Id = obj.getInt(arguments.elementAt(1));
-            location = obj.getString(arguments.elementAt(2));
-            if(rm.deleteRooms(Id,location))
+            // Id = obj.getInt(arguments.elementAt(1));
+            outToServer.writeObject(arguments);
+            if(inFromServer.readLine() == positive_res)
                 System.out.println("Rooms Deleted");
             else
                 System.out.println("Rooms could not be deleted");
@@ -275,9 +262,10 @@ public class client
             System.out.println("Deleting a customer from the database using id: "+arguments.elementAt(1));
             System.out.println("Customer id: "+arguments.elementAt(2));
             try{
-            Id = obj.getInt(arguments.elementAt(1));
-            int customer = obj.getInt(arguments.elementAt(2));
-            if(rm.deleteCustomer(Id,customer))
+            // Id = obj.getInt(arguments.elementAt(1));
+            // int customer = obj.getInt(arguments.elementAt(2));
+            outToServer.writeObject(arguments);
+            if(inFromServer.readLine() == positive_res)
                 System.out.println("Customer Deleted");
             else
                 System.out.println("Customer could not be deleted");
@@ -297,9 +285,10 @@ public class client
             System.out.println("Querying a flight using id: "+arguments.elementAt(1));
             System.out.println("Flight number: "+arguments.elementAt(2));
             try{
-            Id = obj.getInt(arguments.elementAt(1));
-            flightNum = obj.getInt(arguments.elementAt(2));
-            int seats=rm.queryFlight(Id,flightNum);
+            // Id = obj.getInt(arguments.elementAt(1));
+            // flightNum = obj.getInt(arguments.elementAt(2));
+            outToServer.writeObject(arguments);
+            String seats=inFromServer.readLine();
             System.out.println("Number of seats available:"+seats);
             }
             catch(Exception e){
@@ -317,10 +306,12 @@ public class client
             System.out.println("Querying a car location using id: "+arguments.elementAt(1));
             System.out.println("Car location: "+arguments.elementAt(2));
             try{
-            Id = obj.getInt(arguments.elementAt(1));
-            location = obj.getString(arguments.elementAt(2));
-            numCars=rm.queryCars(Id,location);
-            System.out.println("number of Cars at this location:"+numCars);
+            // Id = obj.getInt(arguments.elementAt(1));
+            // location = obj.getString(arguments.elementAt(2));
+            // numCars=rm.queryCars(Id,location);
+            outToServer.writeObject(arguments);
+            String num_Cars=inFromServer.readLine();
+            System.out.println("number of Cars at this location:"+num_Cars);
             }
             catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -337,10 +328,12 @@ public class client
             System.out.println("Querying a room location using id: "+arguments.elementAt(1));
             System.out.println("Room location: "+arguments.elementAt(2));
             try{
-            Id = obj.getInt(arguments.elementAt(1));
-            location = obj.getString(arguments.elementAt(2));
-            numRooms=rm.queryRooms(Id,location);
-            System.out.println("number of Rooms at this location:"+numRooms);
+            // Id = obj.getInt(arguments.elementAt(1));
+            // location = obj.getString(arguments.elementAt(2));
+            // numRooms=rm.queryRooms(Id,location);
+            outToServer.writeObject(arguments);
+            String num_Rooms=inFromServer.readLine();  
+            System.out.println("number of Rooms at this location:"+num_Rooms);
             }
             catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -357,9 +350,11 @@ public class client
             System.out.println("Querying Customer information using id: "+arguments.elementAt(1));
             System.out.println("Customer id: "+arguments.elementAt(2));
             try{
-            Id = obj.getInt(arguments.elementAt(1));
-            int customer = obj.getInt(arguments.elementAt(2));
-            String bill=rm.queryCustomerInfo(Id,customer);
+            // Id = obj.getInt(arguments.elementAt(1));
+            // int customer = obj.getInt(arguments.elementAt(2));
+            // String bill=rm.queryCustomerInfo(Id,customer);
+            outToServer.writeObject(arguments);
+            String bill=inFromServer.readLine(); 
             System.out.println("Customer info:"+bill);
             }
             catch(Exception e){
@@ -377,10 +372,12 @@ public class client
             System.out.println("Querying a flight Price using id: "+arguments.elementAt(1));
             System.out.println("Flight number: "+arguments.elementAt(2));
             try{
-            Id = obj.getInt(arguments.elementAt(1));
-            flightNum = obj.getInt(arguments.elementAt(2));
-            price=rm.queryFlightPrice(Id,flightNum);
-            System.out.println("Price of a seat:"+price);
+            // Id = obj.getInt(arguments.elementAt(1));
+            // flightNum = obj.getInt(arguments.elementAt(2));
+            // price=rm.queryFlightPrice(Id,flightNum);
+            outToServer.writeObject(arguments);
+            String price_=inFromServer.readLine(); 
+            System.out.println("Price of a seat:"+price_);
             }
             catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -397,10 +394,12 @@ public class client
             System.out.println("Querying a car price using id: "+arguments.elementAt(1));
             System.out.println("Car location: "+arguments.elementAt(2));
             try{
-            Id = obj.getInt(arguments.elementAt(1));
-            location = obj.getString(arguments.elementAt(2));
-            price=rm.queryCarsPrice(Id,location);
-            System.out.println("Price of a car at this location:"+price);
+            // Id = obj.getInt(arguments.elementAt(1));
+            // location = obj.getString(arguments.elementAt(2));
+            // price=rm.queryCarsPrice(Id,location);
+            outToServer.writeObject(arguments);
+            String price_=inFromServer.readLine();
+            System.out.println("Price of a car at this location:"+price_);
             }
             catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -417,10 +416,12 @@ public class client
             System.out.println("Querying a room price using id: "+arguments.elementAt(1));
             System.out.println("Room Location: "+arguments.elementAt(2));
             try{
-            Id = obj.getInt(arguments.elementAt(1));
-            location = obj.getString(arguments.elementAt(2));
-            price=rm.queryRoomsPrice(Id,location);
-            System.out.println("Price of Rooms at this location:"+price);
+            // Id = obj.getInt(arguments.elementAt(1));
+            // location = obj.getString(arguments.elementAt(2));
+            // price=rm.queryRoomsPrice(Id,location);
+            outToServer.writeObject(arguments);
+            String price_=inFromServer.readLine();
+            System.out.println("Price of Rooms at this location:"+price_);
             }
             catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -438,10 +439,11 @@ public class client
             System.out.println("Customer id: "+arguments.elementAt(2));
             System.out.println("Flight number: "+arguments.elementAt(3));
             try{
-            Id = obj.getInt(arguments.elementAt(1));
-            int customer = obj.getInt(arguments.elementAt(2));
-            flightNum = obj.getInt(arguments.elementAt(3));
-            if(rm.reserveFlight(Id,customer,flightNum))
+            // Id = obj.getInt(arguments.elementAt(1));
+            // int customer = obj.getInt(arguments.elementAt(2));
+            // flightNum = obj.getInt(arguments.elementAt(3));
+            outToServer.writeObject(arguments);
+            if(inFromServer.readLine() == positive_res)
                 System.out.println("Flight Reserved");
             else
                 System.out.println("Flight could not be reserved.");
@@ -463,11 +465,12 @@ public class client
             System.out.println("Location: "+arguments.elementAt(3));
             
             try{
-            Id = obj.getInt(arguments.elementAt(1));
-            int customer = obj.getInt(arguments.elementAt(2));
-            location = obj.getString(arguments.elementAt(3));
+            // Id = obj.getInt(arguments.elementAt(1));
+            // int customer = obj.getInt(arguments.elementAt(2));
+            // location = obj.getString(arguments.elementAt(3));
             
-            if(rm.reserveCar(Id,customer,location))
+            outToServer.writeObject(arguments);
+            if(inFromServer.readLine() == positive_res)
                 System.out.println("Car Reserved");
             else
                 System.out.println("Car could not be reserved.");
@@ -488,11 +491,12 @@ public class client
             System.out.println("Customer id: "+arguments.elementAt(2));
             System.out.println("Location: "+arguments.elementAt(3));
             try{
-            Id = obj.getInt(arguments.elementAt(1));
-            int customer = obj.getInt(arguments.elementAt(2));
-            location = obj.getString(arguments.elementAt(3));
+            // Id = obj.getInt(arguments.elementAt(1));
+            // int customer = obj.getInt(arguments.elementAt(2));
+            // location = obj.getString(arguments.elementAt(3));
             
-            if(rm.reserveRoom(Id,customer,location))
+            outToServer.writeObject(arguments);
+            if(inFromServer.readLine() == positive_res)
                 System.out.println("Room Reserved");
             else
                 System.out.println("Room could not be reserved.");
@@ -526,7 +530,8 @@ public class client
             Car = obj.getBoolean(arguments.elementAt(arguments.size()-2));
             Room = obj.getBoolean(arguments.elementAt(arguments.size()-1));
             
-            if(rm.itinerary(Id,customer,flightNumbers,location,Car,Room))
+            outToServer.writeObject(arguments);
+            if(inFromServer.readLine() == positive_res)
                 System.out.println("Itinerary Reserved");
             else
                 System.out.println("Itinerary could not be reserved.");
@@ -554,10 +559,14 @@ public class client
             }
             System.out.println("Adding a new Customer using id:"+arguments.elementAt(1) + " and cid " +arguments.elementAt(2));
             try{
-            Id = obj.getInt(arguments.elementAt(1));
+            // Id = obj.getInt(arguments.elementAt(1));
             Cid = obj.getInt(arguments.elementAt(2));
-            boolean customer=rm.newCustomer(Id,Cid);
-            System.out.println("new customer id:"+Cid);
+            // boolean customer=rm.newCustomer(Id,Cid);
+            outToServer.writeObject(arguments);
+            if(inFromServer.readLine() == positive_res)
+                System.out.println("new customer id:"+Cid);
+            else
+                System.out.println("");
             }
             catch(Exception e){
             System.out.println("EXCEPTION:");
