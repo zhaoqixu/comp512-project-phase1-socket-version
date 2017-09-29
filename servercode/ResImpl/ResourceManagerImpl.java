@@ -4,7 +4,7 @@
 //
 package ResImpl;
 
-import ResInterface.*;
+//import ResInterface.*;
 
 import java.util.*;
 
@@ -16,40 +16,33 @@ import java.util.Date;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 
-public class ResourceManagerImpl implements ResourceManager 
+public class ResourceManagerImpl
 {
-    
-    protected RMHashtable m_itemHT = new RMHashtable();
+    public RMHashtable m_itemHT = new RMHashtable();
+    public static void main(String args[]) throws IOException {
 
-
-    public static void main(String args[]) {
-        // Figure out where server is running
-        String server = "localhost";
-        int port = 1099;
-
-        if (args.length == 1) {
-            server = server + ":" + args[0];
-            port = Integer.parseInt(args[0]);
-        } else if (args.length != 0 &&  args.length != 1) {
-            System.err.println ("Wrong usage");
-            System.out.println("Usage: java ResImpl.ResourceManagerImpl [port]");
-            System.exit(1);
+        ResourceManagerImpl rm_server = new ResourceManagerImpl();
+        try
+        {
+            rm_server.runServerThread(rm_server);
         }
-
-        try {
-           
-
-            System.err.println("Server ready");
-        } catch (Exception e) {
-            System.err.println("Server exception: " + e.toString());
-            e.printStackTrace();
+        catch (Exception e)
+        {
+            System.err.println(e);
         }
     }
-     
-    public ResourceManagerImpl() throws RemoteException {
+
+    public void runServerThread(ResourceManagerImpl rm_server) throws IOException
+    {
+        ServerSocket serverSocket = new ServerSocket(9090);
+        System.out.println("Server ready...");
+        while (true)
+        {
+            Socket socket=serverSocket.accept();
+            new ResourceManagerImplThread(socket, rm_server).start();
+        }
     }
-     
-    // Reads a data item
+
     private RMItem readData( int id, String key )
     {
         synchronized(m_itemHT) {
@@ -139,7 +132,7 @@ public class ResourceManagerImpl implements ResourceManager
             Trace.warn("RM::reserveItem( " + id + ", " + customerID + ", " + key+", " + location+") failed--No more items" );
             return false;
         } else {            
-            cust.reserve( key, location, item.getPrice());        
+            cust.reserve( key, location, item.getPrice());      
             writeData( id, cust.getKey(), cust );
             
             // decrease the number of available items in the storage
@@ -254,7 +247,7 @@ public class ResourceManagerImpl implements ResourceManager
 
     // Returns the number of reservations for this flight. 
 //    public int queryFlightReservations(int id, int flightNum)
-////    {
+//    {
 //        Trace.info("RM::queryFlightReservations(" + id + ", #" + flightNum + ") called" );
 //        RMInteger numReservations = (RMInteger) readData( id, Flight.getNumReservationsKey(flightNum) );
 //        if ( numReservations == null ) {
@@ -433,9 +426,94 @@ public class ResourceManagerImpl implements ResourceManager
     }
     
     // Reserve an itinerary 
-    public boolean itinerary(int id,int customer,Vector flightNumbers,String location,boolean Car,boolean Room)
+    public boolean itinerary(int id,int customer,Vector flightNumbers,String location,boolean car,boolean room)
     {
-        return false;
+        if (flightNumbers.size()==0) {
+            return false;
+        }
+        Customer cust = (Customer) readData( id, Customer.getKey(customer) );        
+        if ( cust == null ) {
+            return false;
+        } 
+        Hashtable<Integer,Integer> f_cnt = new Hashtable<Integer,Integer>();
+        int[] flights = new int[flightNumbers.size()];
+        for (int i = 0; i < flightNumbers.size(); i++) {
+            try {
+                flights[i] = gi(flightNumbers.elementAt(i));
+            }
+            catch (Exception e){}
+        }
+        for (int i = 0; i < flightNumbers.size(); i++) {
+            if (f_cnt.containsKey(flights[i]))
+                f_cnt.put(flights[i], f_cnt.get(flights[i])+1);
+            else
+                f_cnt.put(flights[i], 1);
+        }
+
+        if (car) {
+            // check if the item is available
+            ReservableItem item = (ReservableItem)readData(id, Car.getKey(location));
+            if ( item == null )
+                return false;
+            if (item.getCount()==0)
+                return false;
+        }
+
+        if (room) {
+            // check if the item is available
+            ReservableItem item = (ReservableItem)readData(id, Hotel.getKey(location));
+            if ( item == null )
+                return false;
+            if (item.getCount()==0)
+                return false;
+        }
+        Set<Integer> keys = f_cnt.keySet();
+        for (int key : keys) {
+            ReservableItem item = (ReservableItem)readData(id, Flight.getKey(key));
+            if ( item == null )
+                return false;
+            if (item.getCount() < f_cnt.get(key))
+                return false;
+        }
+
+        if (car) 
+            reserveCar(id, customer, location);
+        if (room)
+            reserveRoom(id, customer, location);
+
+        for (int i = 0; i < flightNumbers.size() ;i++ ) {
+            reserveFlight(id, customer, Integer.parseInt((String)flightNumbers.elementAt(i)));
+        }
+        return true;
+    }
+    // Convert Object to int
+    public int gi(Object temp) throws Exception {
+        try {
+            return (new Integer((String)temp)).intValue();
+        }
+        catch(Exception e) {
+            throw e;
+        }
+    }
+    // Convert Object to boolean
+    public boolean gb(Object temp) throws Exception {
+        try {
+            return (new Boolean((String)temp)).booleanValue();
+            }
+        catch(Exception e) {
+            throw e;
+            }
+    }
+    // Convert Object to String
+    public String gs(Object temp) throws Exception {
+    try {    
+        return (String)temp;
+        }
+    catch (Exception e) {
+        throw e;
+        }
     }
 
+
 }
+

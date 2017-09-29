@@ -31,7 +31,7 @@ public class client
         int numRooms;
         int numCars;
         String location;
-        String positive_res = "false";
+        String positive_res = "true";
 
 
         String server = "localhost";
@@ -100,7 +100,7 @@ public class client
             // flightSeats = obj.getInt(arguments.elementAt(3));
             // flightPrice = obj.getInt(arguments.elementAt(4));
             outToServer.writeObject(arguments);
-            if(inFromServer.readLine() == positive_res)
+            if(inFromServer.readLine().equals(positive_res))
                 System.out.println("Flight added");
             else
                 System.out.println("Flight could not be added");
@@ -127,7 +127,7 @@ public class client
             // numCars = obj.getInt(arguments.elementAt(3));
             // price = obj.getInt(arguments.elementAt(4));
             outToServer.writeObject(arguments);
-            if(inFromServer.readLine() == positive_res)
+            if(inFromServer.readLine().equals(positive_res))
                 System.out.println("Cars added");
             else
                 System.out.println("Cars could not be added");
@@ -154,7 +154,7 @@ public class client
             // numRooms = obj.getInt(arguments.elementAt(3));
             // price = obj.getInt(arguments.elementAt(4));
             outToServer.writeObject(arguments);
-            if(inFromServer.readLine() == positive_res)
+            if(inFromServer.readLine().equals(positive_res))
                 System.out.println("Rooms added");
             else
                 System.out.println("Rooms could not be added");
@@ -196,7 +196,7 @@ public class client
             // Id = obj.getInt(arguments.elementAt(1));
             // flightNum = obj.getInt(arguments.elementAt(2));
             outToServer.writeObject(arguments);
-            if(inFromServer.readLine() == positive_res)
+            if(inFromServer.readLine().equals(positive_res))
                 System.out.println("Flight Deleted");
             else
                 System.out.println("Flight could not be deleted");
@@ -220,7 +220,7 @@ public class client
             // location = obj.getString(arguments.elementAt(2));
             
             outToServer.writeObject(arguments);
-            if(inFromServer.readLine() == positive_res)
+            if(inFromServer.readLine().equals(positive_res))
                 System.out.println("Cars Deleted");
             else
                 System.out.println("Cars could not be deleted");
@@ -242,7 +242,7 @@ public class client
             try{
             // Id = obj.getInt(arguments.elementAt(1));
             outToServer.writeObject(arguments);
-            if(inFromServer.readLine() == positive_res)
+            if(inFromServer.readLine().equals(positive_res))
                 System.out.println("Rooms Deleted");
             else
                 System.out.println("Rooms could not be deleted");
@@ -265,7 +265,7 @@ public class client
             // Id = obj.getInt(arguments.elementAt(1));
             // int customer = obj.getInt(arguments.elementAt(2));
             outToServer.writeObject(arguments);
-            if(inFromServer.readLine() == positive_res)
+            if(inFromServer.readLine().equals(positive_res))
                 System.out.println("Customer Deleted");
             else
                 System.out.println("Customer could not be deleted");
@@ -354,8 +354,20 @@ public class client
             // int customer = obj.getInt(arguments.elementAt(2));
             // String bill=rm.queryCustomerInfo(Id,customer);
             outToServer.writeObject(arguments);
-            String bill=inFromServer.readLine(); 
-            System.out.println("Customer info:"+bill);
+            String bill= "";
+            try {
+                String line;
+                while ((line = inFromServer.readLine()) != null) {
+                    if (line.isEmpty()) {
+                        break;
+                    }
+                    bill += line + "\n";
+                }
+            }
+            catch (Exception e) {
+            }
+            // inFromServer.readLine(); 
+            System.out.print("Customer info:"+bill);
             }
             catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -443,7 +455,7 @@ public class client
             // int customer = obj.getInt(arguments.elementAt(2));
             // flightNum = obj.getInt(arguments.elementAt(3));
             outToServer.writeObject(arguments);
-            if(inFromServer.readLine() == positive_res)
+            if(inFromServer.readLine().equals(positive_res))
                 System.out.println("Flight Reserved");
             else
                 System.out.println("Flight could not be reserved.");
@@ -470,7 +482,7 @@ public class client
             // location = obj.getString(arguments.elementAt(3));
             
             outToServer.writeObject(arguments);
-            if(inFromServer.readLine() == positive_res)
+            if(inFromServer.readLine().equals(positive_res))
                 System.out.println("Car Reserved");
             else
                 System.out.println("Car could not be reserved.");
@@ -496,7 +508,7 @@ public class client
             // location = obj.getString(arguments.elementAt(3));
             
             outToServer.writeObject(arguments);
-            if(inFromServer.readLine() == positive_res)
+            if(inFromServer.readLine().equals(positive_res))
                 System.out.println("Room Reserved");
             else
                 System.out.println("Room could not be reserved.");
@@ -531,7 +543,7 @@ public class client
             Room = obj.getBoolean(arguments.elementAt(arguments.size()-1));
             
             outToServer.writeObject(arguments);
-            if(inFromServer.readLine() == positive_res)
+            if(inFromServer.readLine().equals(positive_res))
                 System.out.println("Itinerary Reserved");
             else
                 System.out.println("Itinerary could not be reserved.");
@@ -563,7 +575,7 @@ public class client
             Cid = obj.getInt(arguments.elementAt(2));
             // boolean customer=rm.newCustomer(Id,Cid);
             outToServer.writeObject(arguments);
-            if(inFromServer.readLine() == positive_res)
+            if(inFromServer.readLine().equals(positive_res))
                 System.out.println("new customer id:"+Cid);
             else
                 System.out.println("");

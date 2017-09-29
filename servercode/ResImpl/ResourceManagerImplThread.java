@@ -15,427 +15,173 @@ import java.net.Socket;
 import java.util.Date;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
 
-public class ResourceManagerImplThread implements ResourceManager 
+public class ResourceManagerImplThread extends Thread 
 {
-    
-    protected RMHashtable m_itemHT = new RMHashtable();
-
-
-    public static void main(String args[]) {
-        // Figure out where server is running
-        String server = "localhost";
-        int port = 1099;
-
-        if (args.length == 1) {
-            server = server + ":" + args[0];
-            port = Integer.parseInt(args[0]);
-        } else if (args.length != 0 &&  args.length != 1) {
-            System.err.println ("Wrong usage");
-            System.out.println("Usage: java ResImpl.ResourceManagerImpl [port]");
-            System.exit(1);
-        }
-
+    Socket socket;
+    ResourceManagerImpl rm_server = new ResourceManagerImpl();
+    ResourceManagerImplThread (Socket socket, ResourceManagerImpl rm_server)
+    {
+        this.socket=socket;
+        this.rm_server=rm_server;
+    }
+    // Convert Object to int
+    public int gi(Object temp) throws Exception {
         try {
-           
-
-            System.err.println("Server ready");
-        } catch (Exception e) {
-            System.err.println("Server exception: " + e.toString());
-            e.printStackTrace();
+            return (new Integer((String)temp)).intValue();
+        }
+        catch(Exception e) {
+            throw e;
         }
     }
-     
-    public ResourceManagerImplThread() throws RemoteException {
-    }
-     
-    // Reads a data item
-    private RMItem readData( int id, String key )
-    {
-        synchronized(m_itemHT) {
-            return (RMItem) m_itemHT.get(key);
-        }
-    }
-
-    // Writes a data item
-    private void writeData( int id, String key, RMItem value )
-    {
-        synchronized(m_itemHT) {
-            m_itemHT.put(key, value);
-        }
-    }
-    
-    // Remove the item out of storage
-    protected RMItem removeData(int id, String key) {
-        synchronized(m_itemHT) {
-            return (RMItem)m_itemHT.remove(key);
-        }
-    }
-    
-    
-    // deletes the entire item
-    protected boolean deleteItem(int id, String key)
-    {
-        Trace.info("RM::deleteItem(" + id + ", " + key + ") called" );
-        ReservableItem curObj = (ReservableItem) readData( id, key );
-        // Check if there is such an item in the storage
-        if ( curObj == null ) {
-            Trace.warn("RM::deleteItem(" + id + ", " + key + ") failed--item doesn't exist" );
-            return false;
-        } else {
-            if (curObj.getReserved()==0) {
-                removeData(id, curObj.getKey());
-                Trace.info("RM::deleteItem(" + id + ", " + key + ") item deleted" );
-                return true;
+    // Convert Object to boolean
+    public boolean gb(Object temp) throws Exception {
+        try {
+            return (new Boolean((String)temp)).booleanValue();
             }
-            else {
-                Trace.info("RM::deleteItem(" + id + ", " + key + ") item can't be deleted because some customers reserved it" );
-                return false;
+        catch(Exception e) {
+            throw e;
             }
-        } // if
     }
-    
+    // Convert Object to String
+    public String gs(Object temp) throws Exception {
+    try {    
+        return (String)temp;
+        }
+    catch (Exception e) {
+        throw e;
+        }
+    }
 
-    // query the number of available seats/rooms/cars
-    protected int queryNum(int id, String key) {
-        Trace.info("RM::queryNum(" + id + ", " + key + ") called" );
-        ReservableItem curObj = (ReservableItem) readData( id, key);
-        int value = 0;  
-        if ( curObj != null ) {
-            value = curObj.getCount();
-        } // else
-        Trace.info("RM::queryNum(" + id + ", " + key + ") returns count=" + value);
-        return value;
-    }    
-    
-    // query the price of an item
-    protected int queryPrice(int id, String key) {
-        Trace.info("RM::queryCarsPrice(" + id + ", " + key + ") called" );
-        ReservableItem curObj = (ReservableItem) readData( id, key);
-        int value = 0; 
-        if ( curObj != null ) {
-            value = curObj.getPrice();
-        } // else
-        Trace.info("RM::queryCarsPrice(" + id + ", " + key + ") returns cost=$" + value );
-        return value;        
-    }
-    
-    // reserve an item
-    protected boolean reserveItem(int id, int customerID, String key, String location) {
-        Trace.info("RM::reserveItem( " + id + ", customer=" + customerID + ", " +key+ ", "+location+" ) called" );        
-        // Read customer object if it exists (and read lock it)
-        Customer cust = (Customer) readData( id, Customer.getKey(customerID) );        
-        if ( cust == null ) {
-            Trace.warn("RM::reserveCar( " + id + ", " + customerID + ", " + key + ", "+location+")  failed--customer doesn't exist" );
-            return false;
-        } 
-        
-        // check if the item is available
-        ReservableItem item = (ReservableItem)readData(id, key);
-        if ( item == null ) {
-            Trace.warn("RM::reserveItem( " + id + ", " + customerID + ", " + key+", " +location+") failed--item doesn't exist" );
-            return false;
-        } else if (item.getCount()==0) {
-            Trace.warn("RM::reserveItem( " + id + ", " + customerID + ", " + key+", " + location+") failed--No more items" );
-            return false;
-        } else {            
-            cust.reserve( key, location, item.getPrice());        
-            writeData( id, cust.getKey(), cust );
-            
-            // decrease the number of available items in the storage
-            item.setCount(item.getCount() - 1);
-            item.setReserved(item.getReserved()+1);
-            
-            Trace.info("RM::reserveItem( " + id + ", " + customerID + ", " + key + ", " +location+") succeeded" );
-            return true;
-        }        
-    }
-    
-    // Create a new flight, or add seats to existing flight
-    //  NOTE: if flightPrice <= 0 and the flight already exists, it maintains its current price
-    public boolean addFlight(int id, int flightNum, int flightSeats, int flightPrice)
+    public void run()
     {
-        Trace.info("RM::addFlight(" + id + ", " + flightNum + ", $" + flightPrice + ", " + flightSeats + ") called" );
-        Flight curObj = (Flight) readData( id, Flight.getKey(flightNum) );
-        if ( curObj == null ) {
-            // doesn't exist...add it
-            Flight newObj = new Flight( flightNum, flightSeats, flightPrice );
-            writeData( id, newObj.getKey(), newObj );
-            Trace.info("RM::addFlight(" + id + ") created new flight " + flightNum + ", seats=" +
-                    flightSeats + ", price=$" + flightPrice );
-        } else {
-            // add seats to existing flight and update the price...
-            curObj.setCount( curObj.getCount() + flightSeats );
-            if ( flightPrice > 0 ) {
-                curObj.setPrice( flightPrice );
-            } // if
-            writeData( id, curObj.getKey(), curObj );
-            Trace.info("RM::addFlight(" + id + ") modified existing flight " + flightNum + ", seats=" + curObj.getCount() + ", price=$" + flightPrice );
-        } // else
-        return(true);
-    }
 
-
-    
-    public boolean deleteFlight(int id, int flightNum)
-    {
-        return deleteItem(id, Flight.getKey(flightNum));
-    }
-
-
-
-    // Create a new room location or add rooms to an existing location
-    //  NOTE: if price <= 0 and the room location already exists, it maintains its current price
-    public boolean addRooms(int id, String location, int count, int price)
-    {
-        Trace.info("RM::addRooms(" + id + ", " + location + ", " + count + ", $" + price + ") called" );
-        Hotel curObj = (Hotel) readData( id, Hotel.getKey(location) );
-        if ( curObj == null ) {
-            // doesn't exist...add it
-            Hotel newObj = new Hotel( location, count, price );
-            writeData( id, newObj.getKey(), newObj );
-            Trace.info("RM::addRooms(" + id + ") created new room location " + location + ", count=" + count + ", price=$" + price );
-        } else {
-            // add count to existing object and update price...
-            curObj.setCount( curObj.getCount() + count );
-            if ( price > 0 ) {
-                curObj.setPrice( price );
-            } // if
-            writeData( id, curObj.getKey(), curObj );
-            Trace.info("RM::addRooms(" + id + ") modified existing location " + location + ", count=" + curObj.getCount() + ", price=$" + price );
-        } // else
-        return(true);
-    }
-
-    // Delete rooms from a location
-    public boolean deleteRooms(int id, String location)
-    {
-        return deleteItem(id, Hotel.getKey(location));
-        
-    }
-
-    // Create a new car location or add cars to an existing location
-    //  NOTE: if price <= 0 and the location already exists, it maintains its current price
-    public boolean addCars(int id, String location, int count, int price)
-    {
-        Trace.info("RM::addCars(" + id + ", " + location + ", " + count + ", $" + price + ") called" );
-        Car curObj = (Car) readData( id, Car.getKey(location) );
-        if ( curObj == null ) {
-            // car location doesn't exist...add it
-            Car newObj = new Car( location, count, price );
-            writeData( id, newObj.getKey(), newObj );
-            Trace.info("RM::addCars(" + id + ") created new location " + location + ", count=" + count + ", price=$" + price );
-        } else {
-            // add count to existing car location and update price...
-            curObj.setCount( curObj.getCount() + count );
-            if ( price > 0 ) {
-                curObj.setPrice( price );
-            } // if
-            writeData( id, curObj.getKey(), curObj );
-            Trace.info("RM::addCars(" + id + ") modified existing location " + location + ", count=" + curObj.getCount() + ", price=$" + price );
-        } // else
-        return(true);
-    }
-
-
-    // Delete cars from a location
-    public boolean deleteCars(int id, String location)
-    {
-        return deleteItem(id, Car.getKey(location));
-    }
-
-
-
-    // Returns the number of empty seats on this flight
-    public int queryFlight(int id, int flightNum)
-    {
-        return queryNum(id, Flight.getKey(flightNum));
-    }
-
-    // Returns the number of reservations for this flight. 
-//    public int queryFlightReservations(int id, int flightNum)
-////    {
-//        Trace.info("RM::queryFlightReservations(" + id + ", #" + flightNum + ") called" );
-//        RMInteger numReservations = (RMInteger) readData( id, Flight.getNumReservationsKey(flightNum) );
-//        if ( numReservations == null ) {
-//            numReservations = new RMInteger(0);
-//        } // if
-//        Trace.info("RM::queryFlightReservations(" + id + ", #" + flightNum + ") returns " + numReservations );
-//        return numReservations.getValue();
-//    }
-
-
-    // Returns price of this flight
-    public int queryFlightPrice(int id, int flightNum )
-    {
-        return queryPrice(id, Flight.getKey(flightNum));
-    }
-
-
-    // Returns the number of rooms available at a location
-    public int queryRooms(int id, String location)
-    {
-        return queryNum(id, Hotel.getKey(location));
-    }
-
-
-    
-    
-    // Returns room price at this location
-    public int queryRoomsPrice(int id, String location)
-    {
-        return queryPrice(id, Hotel.getKey(location));
-    }
-
-
-    // Returns the number of cars available at a location
-    public int queryCars(int id, String location)
-    {
-        return queryNum(id, Car.getKey(location));
-    }
-
-
-    // Returns price of cars at this location
-    public int queryCarsPrice(int id, String location)
-    {
-        return queryPrice(id, Car.getKey(location));
-    }
-
-    // Returns data structure containing customer reservation info. Returns null if the
-    //  customer doesn't exist. Returns empty RMHashtable if customer exists but has no
-    //  reservations.
-    public RMHashtable getCustomerReservations(int id, int customerID)
-    {
-        Trace.info("RM::getCustomerReservations(" + id + ", " + customerID + ") called" );
-        Customer cust = (Customer) readData( id, Customer.getKey(customerID) );
-        if ( cust == null ) {
-            Trace.warn("RM::getCustomerReservations failed(" + id + ", " + customerID + ") failed--customer doesn't exist" );
-            return null;
-        } else {
-            return cust.getReservations();
-        } // if
-    }
-
-    // return a bill
-    public String queryCustomerInfo(int id, int customerID)
-    {
-        Trace.info("RM::queryCustomerInfo(" + id + ", " + customerID + ") called" );
-        Customer cust = (Customer) readData( id, Customer.getKey(customerID) );
-        if ( cust == null ) {
-            Trace.warn("RM::queryCustomerInfo(" + id + ", " + customerID + ") failed--customer doesn't exist" );
-            return "";   // NOTE: don't change this--WC counts on this value indicating a customer does not exist...
-        } else {
-                String s = cust.printBill();
-                Trace.info("RM::queryCustomerInfo(" + id + ", " + customerID + "), bill follows..." );
-                System.out.println( s );
-                return s;
-        } // if
-    }
-
-    // customer functions
-    // new customer just returns a unique customer identifier
-    
-    public int newCustomer(int id)
-    {
-        Trace.info("INFO: RM::newCustomer(" + id + ") called" );
-        // Generate a globally unique ID for the new customer
-        int cid = Integer.parseInt( String.valueOf(id) +
-                                String.valueOf(Calendar.getInstance().get(Calendar.MILLISECOND)) +
-                                String.valueOf( Math.round( Math.random() * 100 + 1 )));
-        Customer cust = new Customer( cid );
-        writeData( id, cust.getKey(), cust );
-        Trace.info("RM::newCustomer(" + cid + ") returns ID=" + cid );
-        return cid;
-    }
-
-    // I opted to pass in customerID instead. This makes testing easier
-    public boolean newCustomer(int id, int customerID )
-    {
-        Trace.info("INFO: RM::newCustomer(" + id + ", " + customerID + ") called" );
-        Customer cust = (Customer) readData( id, Customer.getKey(customerID) );
-        if ( cust == null ) {
-            cust = new Customer(customerID);
-            writeData( id, cust.getKey(), cust );
-            Trace.info("INFO: RM::newCustomer(" + id + ", " + customerID + ") created a new customer" );
-            return true;
-        } else {
-            Trace.info("INFO: RM::newCustomer(" + id + ", " + customerID + ") failed--customer already exists");
-            return false;
-        } // else
-    }
-
-
-    // Deletes customer from the database. 
-    public boolean deleteCustomer(int id, int customerID)
-    {
-        Trace.info("RM::deleteCustomer(" + id + ", " + customerID + ") called" );
-        Customer cust = (Customer) readData( id, Customer.getKey(customerID) );
-        if ( cust == null ) {
-            Trace.warn("RM::deleteCustomer(" + id + ", " + customerID + ") failed--customer doesn't exist" );
-            return false;
-        } else {            
-            // Increase the reserved numbers of all reservable items which the customer reserved. 
-            RMHashtable reservationHT = cust.getReservations();
-            for (Enumeration e = reservationHT.keys(); e.hasMoreElements();) {        
-                String reservedkey = (String) (e.nextElement());
-                ReservedItem reserveditem = cust.getReservedItem(reservedkey);
-                Trace.info("RM::deleteCustomer(" + id + ", " + customerID + ") has reserved " + reserveditem.getKey() + " " +  reserveditem.getCount() +  " times"  );
-                ReservableItem item  = (ReservableItem) readData(id, reserveditem.getKey());
-                Trace.info("RM::deleteCustomer(" + id + ", " + customerID + ") has reserved " + reserveditem.getKey() + "which is reserved" +  item.getReserved() +  " times and is still available " + item.getCount() + " times"  );
-                item.setReserved(item.getReserved()-reserveditem.getCount());
-                item.setCount(item.getCount()+reserveditem.getCount());
+    try
+        {
+        ObjectInputStream inFromClient= new ObjectInputStream(socket.getInputStream());
+        PrintWriter outToClient = new PrintWriter(socket.getOutputStream(), true);
+        Vector message = null;
+        while ((message = (Vector) inFromClient.readObject())!=null){  
+            boolean result = false;
+            int num;
+            Object[] o = new Object[message.size()];
+            for (int i = 0 ; i < message.size(); i++) {
+                o[i] = message.elementAt(i);
             }
-            
-            // remove the customer from the storage
-            removeData(id, cust.getKey());
-            
-            Trace.info("RM::deleteCustomer(" + id + ", " + customerID + ") succeeded" );
-            return true;
-        } // if
+            switch(gs(o[0]).toLowerCase())
+            {
+                case "newflight": //2
+                    if (rm_server.addFlight(gi(o[1]), gi(o[2]), gi(o[3]), gi(o[4])))
+                        outToClient.println("true");
+                    else
+                        outToClient.println("false");
+                    break;
+                case "newcar": //3
+                    if (rm_server.addCars(gi(o[1]),gs(o[2]), gi(o[3]), gi(o[4])))
+                        outToClient.println("true");
+                    else
+                        outToClient.println("false");
+                    break;
+                case "newroom": //4
+                    if (rm_server.addRooms(gi(o[1]),gs(o[2]),gi(o[3]),gi(o[4])))
+                        outToClient.println("true");
+                    else
+                        outToClient.println("false");
+                    break;
+                case "newcustomer": //5
+                    outToClient.println(rm_server.newCustomer(gi(o[1])));
+                    break;
+                case "deleteflight": //6
+                    if (rm_server.deleteFlight(gi(o[1]),gi(o[2])))
+                        outToClient.println("true");
+                    else
+                        outToClient.println("false");
+                    break;
+                case "deletecar": //7
+                    if (rm_server.deleteCars(gi(o[1]),gs(o[2])))
+                        outToClient.println("true");
+                    else
+                        outToClient.println("false");
+                    break;
+                case "deleteroom": //8
+                    if (rm_server.deleteRooms(gi(o[1]),gs(o[2])))
+                        outToClient.println("true");
+                    else
+                        outToClient.println("false");
+                    break;
+                case "deletecustomer": //9
+                    if (rm_server.deleteCustomer(gi(o[1]),gi(o[2])))
+                        outToClient.println("true");
+                    else
+                        outToClient.println("false");
+                    break;
+                case "queryflight": //10
+                    outToClient.println(rm_server.queryFlight(gi(o[1]),gi(o[2])));
+                    break;
+                case "querycar": //11
+                    outToClient.println(rm_server.queryCars(gi(o[1]),gs(o[2])));
+                    break;
+                case "queryroom": //12
+                    outToClient.println(rm_server.queryRooms(gi(o[1]),gs(o[2])));
+                    break;
+                case "querycustomer": //13
+                    outToClient.println(rm_server.queryCustomerInfo(gi(o[1]),gi(o[2])));
+                    break;
+                case "queryflightprice": //14
+                    outToClient.println(rm_server.queryFlightPrice(gi(o[1]),gi(o[2])));
+                    break;
+                case "querycarprice": //15
+                    outToClient.println(rm_server.queryCarsPrice(gi(o[1]),gs(o[2])));
+                    break;
+                case "queryroomprice": //16
+                    outToClient.println(rm_server.queryRoomsPrice(gi(o[1]),gs(o[2])));
+                    break;
+                case "reserveflight": //17
+                    if (rm_server.reserveFlight(gi(o[1]),gi(o[2]),gi(o[3])))
+                        outToClient.println("true");
+                    else
+                        outToClient.println("false");
+                    break;
+                case "reservecar": //18
+                    if (rm_server.reserveCar(gi(o[1]),gi(o[2]),gs(o[3])))
+                        outToClient.println("true");
+                    else
+                        outToClient.println("false");
+                    break;
+                case "reserveroom": //19
+                    if (rm_server.reserveRoom(gi(o[1]),gi(o[2]),gs(o[3])))
+                        outToClient.println("true");
+                    else
+                        outToClient.println("false");
+                    break;
+                case "itinerary": //20
+                    Vector flightNumbers = new Vector();
+                    int n = o.length;
+                    for(int i=0;i<n-6;i++)
+                        flightNumbers.addElement(o[3+i]);
+                    if (rm_server.itinerary(gi(o[1]),gi(o[2]), flightNumbers, gs(o[n-3]),gb(o[n-2]),gb(o[n-1])))
+                        outToClient.println("true");
+                    else
+                        outToClient.println("false");
+                    break;
+                case "newcustomerid": //22
+                    if (rm_server.newCustomer(gi(o[1]),gi(o[2])))
+                        outToClient.println("true");
+                    else
+                        outToClient.println("false");
+                    break;
+            }
+
+
+        }
+        socket.close();
+        }
+        catch (Exception e)
+        {
+            if (e instanceof IOException) {
+                System.err.println("One of the clients is disconnected!");
+            }
+        }
     }
-
-
-
-    /*
-    // Frees flight reservation record. Flight reservation records help us make sure we
-    // don't delete a flight if one or more customers are holding reservations
-    public boolean freeFlightReservation(int id, int flightNum)
-    {
-        Trace.info("RM::freeFlightReservations(" + id + ", " + flightNum + ") called" );
-        RMInteger numReservations = (RMInteger) readData( id, Flight.getNumReservationsKey(flightNum) );
-        if ( numReservations != null ) {
-            numReservations = new RMInteger( Math.max( 0, numReservations.getValue()-1) );
-        } // if
-        writeData(id, Flight.getNumReservationsKey(flightNum), numReservations );
-        Trace.info("RM::freeFlightReservations(" + id + ", " + flightNum + ") succeeded, this flight now has "
-                + numReservations + " reservations" );
-        return true;
-    }
-    */
-
-    
-    // Adds car reservation to this customer. 
-    public boolean reserveCar(int id, int customerID, String location)
-    {
-        return reserveItem(id, customerID, Car.getKey(location), location);
-    }
-
-
-    // Adds room reservation to this customer. 
-    public boolean reserveRoom(int id, int customerID, String location)
-    {
-        return reserveItem(id, customerID, Hotel.getKey(location), location);
-    }
-    // Adds flight reservation to this customer.  
-    public boolean reserveFlight(int id, int customerID, int flightNum)
-    {
-        return reserveItem(id, customerID, Flight.getKey(flightNum), String.valueOf(flightNum));
-    }
-    
-    // Reserve an itinerary 
-    public boolean itinerary(int id,int customer,Vector flightNumbers,String location,boolean Car,boolean Room)
-    {
-        return false;
-    }
-
 }
