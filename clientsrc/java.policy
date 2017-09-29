@@ -1,5 +1,0 @@
-grant codeBase "file:PUT-THE-RIGHT-PATH-HERE" {
-    permission java.security.AllPermission;
-};
-
-
