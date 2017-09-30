@@ -172,8 +172,6 @@ public class ResourceManagerImplThread extends Thread
                         outToClient.println("false");
                     break;
             }
-
-
         }
         socket.close();
         }

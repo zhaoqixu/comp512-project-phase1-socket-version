@@ -35,7 +35,7 @@ public class client
 
 
         String server = "localhost";
-        int port = 1099;
+        int port = 8080;
         if (args.length > 0)
         {
             server = args[0];
