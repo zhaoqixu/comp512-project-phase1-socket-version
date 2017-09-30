@@ -51,7 +51,7 @@ public class ResourceManagerImpl
     }
 
     // Writes a data item
-    private void writeData( int id, String key, RMItem value )
+    protected void writeData( int id, String key, RMItem value )
     {
         synchronized(m_itemHT) {
             m_itemHT.put(key, value);
@@ -428,63 +428,64 @@ public class ResourceManagerImpl
     // Reserve an itinerary 
     public boolean itinerary(int id,int customer,Vector flightNumbers,String location,boolean car,boolean room)
     {
-        if (flightNumbers.size()==0) {
-            return false;
-        }
-        Customer cust = (Customer) readData( id, Customer.getKey(customer) );        
-        if ( cust == null ) {
-            return false;
-        } 
-        Hashtable<Integer,Integer> f_cnt = new Hashtable<Integer,Integer>();
-        int[] flights = new int[flightNumbers.size()];
-        for (int i = 0; i < flightNumbers.size(); i++) {
-            try {
-                flights[i] = gi(flightNumbers.elementAt(i));
-            }
-            catch (Exception e){}
-        }
-        for (int i = 0; i < flightNumbers.size(); i++) {
-            if (f_cnt.containsKey(flights[i]))
-                f_cnt.put(flights[i], f_cnt.get(flights[i])+1);
-            else
-                f_cnt.put(flights[i], 1);
-        }
+        // if (flightNumbers.size()==0) {
+        //     return false;
+        // }
+        // Customer cust = (Customer) readData( id, Customer.getKey(customer) );        
+        // if ( cust == null ) {
+        //     return false;
+        // } 
+        // Hashtable<Integer,Integer> f_cnt = new Hashtable<Integer,Integer>();
+        // int[] flights = new int[flightNumbers.size()];
+        // for (int i = 0; i < flightNumbers.size(); i++) {
+        //     try {
+        //         flights[i] = gi(flightNumbers.elementAt(i));
+        //     }
+        //     catch (Exception e){}
+        // }
+        // for (int i = 0; i < flightNumbers.size(); i++) {
+        //     if (f_cnt.containsKey(flights[i]))
+        //         f_cnt.put(flights[i], f_cnt.get(flights[i])+1);
+        //     else
+        //         f_cnt.put(flights[i], 1);
+        // }
 
-        if (car) {
-            // check if the item is available
-            ReservableItem item = (ReservableItem)readData(id, Car.getKey(location));
-            if ( item == null )
-                return false;
-            if (item.getCount()==0)
-                return false;
-        }
+        // if (car) {
+        //     // check if the item is available
+        //     ReservableItem item = (ReservableItem)readData(id, Car.getKey(location));
+        //     if ( item == null )
+        //         return false;
+        //     if (item.getCount()==0)
+        //         return false;
+        // }
 
-        if (room) {
-            // check if the item is available
-            ReservableItem item = (ReservableItem)readData(id, Hotel.getKey(location));
-            if ( item == null )
-                return false;
-            if (item.getCount()==0)
-                return false;
-        }
-        Set<Integer> keys = f_cnt.keySet();
-        for (int key : keys) {
-            ReservableItem item = (ReservableItem)readData(id, Flight.getKey(key));
-            if ( item == null )
-                return false;
-            if (item.getCount() < f_cnt.get(key))
-                return false;
-        }
+        // if (room) {
+        //     // check if the item is available
+        //     ReservableItem item = (ReservableItem)readData(id, Hotel.getKey(location));
+        //     if ( item == null )
+        //         return false;
+        //     if (item.getCount()==0)
+        //         return false;
+        // }
+        // Set<Integer> keys = f_cnt.keySet();
+        // for (int key : keys) {
+        //     ReservableItem item = (ReservableItem)readData(id, Flight.getKey(key));
+        //     if ( item == null )
+        //         return false;
+        //     if (item.getCount() < f_cnt.get(key))
+        //         return false;
+        // }
 
-        if (car) 
-            reserveCar(id, customer, location);
-        if (room)
-            reserveRoom(id, customer, location);
+        // if (car) 
+        //     reserveCar(id, customer, location);
+        // if (room)
+        //     reserveRoom(id, customer, location);
 
-        for (int i = 0; i < flightNumbers.size() ;i++ ) {
-            reserveFlight(id, customer, Integer.parseInt((String)flightNumbers.elementAt(i)));
-        }
-        return true;
+        // for (int i = 0; i < flightNumbers.size() ;i++ ) {
+        //     reserveFlight(id, customer, Integer.parseInt((String)flightNumbers.elementAt(i)));
+        // }
+        // return true;
+        return false;
     }
 
     public boolean update_rm(int id, int customerID, String reservedkey, int reservedCount) {

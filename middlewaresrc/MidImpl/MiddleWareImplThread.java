@@ -87,6 +87,7 @@ public class MiddleWareImplThread extends Thread
             for (int i = 0 ; i < message.size(); i++) {
                 o[i] = message.elementAt(i);
             }
+            oloop:
             switch(gs(o[0]).toLowerCase())
             {
                 case "newflight": //2
@@ -156,7 +157,7 @@ public class MiddleWareImplThread extends Thread
                                     updatecar.addElement(gs(o[1]));
                                     updatecar.addElement(gs(o[2]));
                                     updatecar.addElement(reservedkey);
-                                    updatecar.addElement(reservedCount);
+                                    updatecar.addElement(String.valueOf(reservedCount));
                                     outToCar.writeObject(updatecar);
                                     if(inFromCar.readLine().equals("false")){
                                         outToClient.println("false");
@@ -169,7 +170,7 @@ public class MiddleWareImplThread extends Thread
                                     updateflight.addElement(gs(o[1]));
                                     updateflight.addElement(gs(o[2]));
                                     updateflight.addElement(reservedkey);
-                                    updateflight.addElement(reservedCount);
+                                    updateflight.addElement(String.valueOf(reservedCount));
                                     outToFlight.writeObject(updateflight);
                                     if(inFromFlight.readLine().equals("false")){
                                         outToClient.println("false");
@@ -182,7 +183,7 @@ public class MiddleWareImplThread extends Thread
                                     updateroom.addElement(gs(o[1]));
                                     updateroom.addElement(gs(o[2]));
                                     updateroom.addElement(reservedkey);
-                                    updateroom.addElement(reservedCount);
+                                    updateroom.addElement(String.valueOf(reservedCount));
                                     outToRoom.writeObject(updateroom);
                                     if(inFromRoom.readLine().equals("false")){
                                         outToClient.println("false");
@@ -191,15 +192,8 @@ public class MiddleWareImplThread extends Thread
                                 default:
                                     break;
                             }
-                
-                // Trace.info("RM::deleteCustomer(" + id + ", " + customerID + ") has reserved " + reserveditem.getKey() + " " +  reserveditem.getCount() +  " times"  );
-                // ReservableItem item  = (ReservableItem) readData(id, reserveditem.getKey());
-                // Trace.info("RM::deleteCustomer(" + id + ", " + customerID + ") has reserved " + reserveditem.getKey() + "which is reserved" +  item.getReserved() +  " times and is still available " + item.getCount() + " times"  );
-                // item.setReserved(item.getReserved()-reservedCount);
-                                    // item.setCount(item.getCount()+reservedCount);
                         }
-                                
-                                // remove the customer from the storage
+                        // remove the customer from the storage
                         rm_server.removeData(gi(o[1]), cust_d.getKey());
                                 
                         Trace.info("RM::deleteCustomer(" + gi(o[1]) + ", " + gi(o[2]) + ") succeeded" );
@@ -259,7 +253,7 @@ public class MiddleWareImplThread extends Thread
                     break;
                 case "reservecar": //18
                     Customer cust_car = (Customer) rm_server.readData(gi(o[1]), Customer.getKey(gi(o[2])));
-                    String key_car = ("car-" + gi(o[3])).toLowerCase(); 
+                    String key_car = ("car-" + gs(o[3])).toLowerCase(); 
                     if ( cust_car == null ) {
                         Trace.warn("RM::reserveCar( " + gi(o[1]) + ", " + gi(o[2]) + ", " + key_car + ", "+ gi(o[3])+")  failed--customer doesn't exist" );
                         outToClient.println("false");
@@ -283,7 +277,7 @@ public class MiddleWareImplThread extends Thread
                     break;
                 case "reserveroom": //19
                     Customer cust_room = (Customer) rm_server.readData(gi(o[1]), Customer.getKey(gi(o[2])));
-                    String key_room = ("room-" + gi(o[3])).toLowerCase(); 
+                    String key_room = ("room-" + gs(o[3])).toLowerCase(); 
                     if ( cust_room == null ) {
                         Trace.warn("RM::reserveRoom( " + gi(o[1]) + ", " + gi(o[2]) + ", " + key_room + ", "+ gi(o[3])+")  failed--customer doesn't exist" );
                         outToClient.println("false");
@@ -310,10 +304,136 @@ public class MiddleWareImplThread extends Thread
                     int n = o.length;
                     for(int i=0;i<n-6;i++)
                         flightNumbers.addElement(o[3+i]);
-                    if (rm_server.itinerary(gi(o[1]),gi(o[2]), flightNumbers, gs(o[n-3]),gb(o[n-2]),gb(o[n-1])))
-                        outToClient.println("true");
-                    else
+                    if (flightNumbers.size()==0) {
                         outToClient.println("false");
+                        break;
+                    }
+                    Customer cust_it = (Customer) rm_server.readData(gi(o[1]), Customer.getKey(gi(o[2])));
+                    if (cust_it == null) {
+                        outToClient.println("false");
+                        break;
+                    }
+                    Hashtable<Integer,Integer> f_cnt = new Hashtable<Integer,Integer>();
+                    int[] flights = new int[flightNumbers.size()];
+                    for (int i = 0; i < flightNumbers.size(); i++) {
+                        try {
+                            flights[i] = gi(flightNumbers.elementAt(i));
+                        }
+                        catch (Exception e){}
+                    }
+                    for (int i = 0; i < flightNumbers.size(); i++) {
+                        if (f_cnt.containsKey(flights[i]))
+                            f_cnt.put(flights[i], f_cnt.get(flights[i])+1);
+                        else
+                            f_cnt.put(flights[i], 1);
+                    }
+                    if (gs(o[n-2]).equals("true")) {
+                        Vector carnumquery = new Vector();
+                        carnumquery.addElement("querycar");
+                        carnumquery.addElement(gs(o[1]));
+                        carnumquery.addElement(gs(o[n-3]));
+                        outToCar.writeObject(carnumquery);
+                        int carnum = Integer.parseInt(inFromCar.readLine());
+                        if (carnum == 0 ) {
+                            outToClient.println("false");
+                            break;
+                        }
+                    }
+                    if (gs(o[n-1]).equals("true")) {
+                        Vector roomnumquery = new Vector();
+                        roomnumquery.addElement("queryroom");
+                        roomnumquery.addElement(gs(o[1]));
+                        roomnumquery.addElement(gs(o[n-3]));
+                        outToRoom.writeObject(roomnumquery);
+                        int roomnum = Integer.parseInt(inFromRoom.readLine());
+                        if (roomnum == 0 ) {
+                            outToClient.println("false");
+                            break;
+                        }
+                    }
+                    Set<Integer> keys = f_cnt.keySet();
+                    for (int k_e_y : keys) {
+                        Vector flightnumquery = new Vector();
+                        flightnumquery.addElement("queryflight");
+                        flightnumquery.addElement(gs(o[1]));
+                        flightnumquery.addElement(String.valueOf(k_e_y));
+                        outToFlight.writeObject(flightnumquery);
+                        int flightcnt = Integer.parseInt(inFromFlight.readLine());
+                        if (flightcnt < f_cnt.get(k_e_y) ) {
+                            outToClient.println("false");
+                            break oloop;
+                        }
+                    }
+                    // reserve a car
+                    if (gs(o[n-2]).equals("true")) {
+                        String key_car_ = ("car-" + gs(o[n-3])).toLowerCase(); 
+                        Vector pricequery = new Vector();
+                        pricequery.addElement("querycarprice");
+                        pricequery.addElement(gs(o[1]));
+                        pricequery.addElement(gs(o[n-3]));
+                        outToCar.writeObject(pricequery);
+                        String price = inFromCar.readLine();
+                        Vector reserveacar = new Vector();
+                        reserveacar.addElement("reservecar");
+                        reserveacar.addElement(gs(o[1]));
+                        reserveacar.addElement(gs(o[2]));
+                        reserveacar.addElement(gs(o[n-3]));
+                        outToCar.writeObject(reserveacar);
+                        if(inFromCar.readLine().equals("true")){
+                            cust_it.reserve( key_car_, gs(o[n-3]), Integer.valueOf(price));      
+                            rm_server.writeData( gi(o[1]), cust_it.getKey(), cust_it);
+                        } else {
+                            outToClient.println("false");
+                            break;
+                        }
+                    }
+                    // reserve a room
+                    if (gs(o[n-1]).equals("true")) {
+                        String key_room_ = ("room-" + gs(o[n-3])).toLowerCase(); 
+                        Vector pricequery = new Vector();
+                        pricequery.addElement("queryroomprice");
+                        pricequery.addElement(gs(o[1]));
+                        pricequery.addElement(gs(o[n-3]));
+                        outToRoom.writeObject(pricequery);
+                        String price = inFromRoom.readLine();
+                        Vector reservearoom = new Vector();
+                        reservearoom.addElement("reserveroom");
+                        reservearoom.addElement(gs(o[1]));
+                        reservearoom.addElement(gs(o[2]));
+                        reservearoom.addElement(gs(o[n-3]));
+                        outToRoom.writeObject(reservearoom);
+                        if(inFromRoom.readLine().equals("true")){
+                            cust_it.reserve( key_room_, gs(o[n-3]), Integer.valueOf(price));      
+                            rm_server.writeData( gi(o[1]), cust_it.getKey(), cust_it);
+                        } else {
+                            outToClient.println("false");
+                            break;
+                        }
+                    }
+                    for (int i = 0; i< flightNumbers.size() ;i++ ) {
+                        int f_num = Integer.parseInt((String)flightNumbers.elementAt(i));
+                        String key_flight = ("flight-" + f_num).toLowerCase(); 
+                        Vector pricequery = new Vector();
+                        pricequery.addElement("queryflightprice");
+                        pricequery.addElement(gs(o[1]));
+                        pricequery.addElement(String.valueOf(f_num));
+                        outToFlight.writeObject(pricequery);
+                        String price = inFromFlight.readLine();
+                        Vector reserveaflight = new Vector();
+                        reserveaflight.addElement("reserveflight");
+                        reserveaflight.addElement(gs(o[1]));
+                        reserveaflight.addElement(gs(o[2]));
+                        reserveaflight.addElement(String.valueOf(f_num));
+                        outToFlight.writeObject(reserveaflight);
+                        if(inFromFlight.readLine().equals("true")){
+                            cust_it.reserve( key_flight, String.valueOf(f_num), Integer.valueOf(price));      
+                            rm_server.writeData( gi(o[1]), cust_it.getKey(), cust_it);
+                        } else {
+                            outToClient.println("false");
+                            break oloop;
+                        }
+                    }
+                    outToClient.println("true");
                     break;
                 case "newcustomerid": //22
                     if (rm_server.newCustomer(gi(o[1]),gi(o[2])))

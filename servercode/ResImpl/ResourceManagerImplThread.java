@@ -156,14 +156,14 @@ public class ResourceManagerImplThread extends Thread
                         outToClient.println("false");
                     break;
                 case "itinerary": //20
-                    Vector flightNumbers = new Vector();
-                    int n = o.length;
-                    for(int i=0;i<n-6;i++)
-                        flightNumbers.addElement(o[3+i]);
-                    if (rm_server.itinerary(gi(o[1]),gi(o[2]), flightNumbers, gs(o[n-3]),gb(o[n-2]),gb(o[n-1])))
-                        outToClient.println("true");
-                    else
-                        outToClient.println("false");
+                    // Vector flightNumbers = new Vector();
+                    // int n = o.length;
+                    // for(int i=0;i<n-6;i++)
+                    //     flightNumbers.addElement(o[3+i]);
+                    // if (rm_server.itinerary(gi(o[1]),gi(o[2]), flightNumbers, gs(o[n-3]),gb(o[n-2]),gb(o[n-1])))
+                    //     outToClient.println("true");
+                    // else
+                    outToClient.println("false");
                     break;
                 case "newcustomerid": //22
                     if (rm_server.newCustomer(gi(o[1]),gi(o[2])))
@@ -172,7 +172,6 @@ public class ResourceManagerImplThread extends Thread
                         outToClient.println("false");
                     break;
                 case "updatecar":
-                    System.out.println("Zhiguai");
                     if (rm_server.update_rm(gi(o[1]),gi(o[2]),gs(o[3]),gi(o[4])))
                         outToClient.println("true");
                     else
