@@ -135,10 +135,76 @@ public class MiddleWareImplThread extends Thread
                         outToClient.println("false");
                     break;
                 case "deletecustomer": //9
-                    if (rm_server.deleteCustomer(gi(o[1]),gi(o[2])))
-                        outToClient.println("true");
-                    else
+                    Trace.info("RM::deleteCustomer(" + gi(o[1]) + ", " + gi(o[2]) + ") called" );
+                    Customer cust_d = (Customer) rm_server.readData( gi(o[1]), Customer.getKey(gi(o[2])) );
+                    if ( cust_d == null ) {
+                        Trace.warn("RM::deleteCustomer(" + gi(o[1]) + ", " + gi(o[2]) + ") failed--customer doesn't exist" );
                         outToClient.println("false");
+                    } else {            
+                        // Increase the reserved numbers of all reservable items which the customer reserved. 
+                        RMHashtable reservationHT = cust_d.getReservations();
+                        for (Enumeration e = reservationHT.keys(); e.hasMoreElements();) {        
+                            String reservedkey = (String) (e.nextElement());
+                            ReservedItem reserveditem = cust_d.getReservedItem(reservedkey);
+                            int reservedCount = reserveditem.getCount();
+
+                            switch (reservedkey.charAt(0)) {
+                                case 'c':
+                                    //rm_car.freeItemRes(id, customerID, reservedkey, reservedCount);
+                                    Vector updatecar = new Vector();
+                                    updatecar.addElement("updatecar");
+                                    updatecar.addElement(gs(o[1]));
+                                    updatecar.addElement(gs(o[2]));
+                                    updatecar.addElement(reservedkey);
+                                    updatecar.addElement(reservedCount);
+                                    outToCar.writeObject(updatecar);
+                                    if(inFromCar.readLine().equals("false")){
+                                        outToClient.println("false");
+                                    }
+                                    break;
+                                case 'f':
+                                    //rm_flight.freeItemRes(id, customerID, reservedkey, reservedCount);
+                                    Vector updateflight = new Vector();
+                                    updateflight.addElement("updateflight");
+                                    updateflight.addElement(gs(o[1]));
+                                    updateflight.addElement(gs(o[2]));
+                                    updateflight.addElement(reservedkey);
+                                    updateflight.addElement(reservedCount);
+                                    outToFlight.writeObject(updateflight);
+                                    if(inFromFlight.readLine().equals("false")){
+                                        outToClient.println("false");
+                                    }
+                                    break;
+                                case 'r':
+                                    //rm_room.freeItemRes(id, customerID, reservedkey, reservedCount);
+                                    Vector updateroom = new Vector();
+                                    updateroom.addElement("updateroom");
+                                    updateroom.addElement(gs(o[1]));
+                                    updateroom.addElement(gs(o[2]));
+                                    updateroom.addElement(reservedkey);
+                                    updateroom.addElement(reservedCount);
+                                    outToRoom.writeObject(updateroom);
+                                    if(inFromRoom.readLine().equals("false")){
+                                        outToClient.println("false");
+                                    }
+                                    break;
+                                default:
+                                    break;
+                            }
+                
+                // Trace.info("RM::deleteCustomer(" + id + ", " + customerID + ") has reserved " + reserveditem.getKey() + " " +  reserveditem.getCount() +  " times"  );
+                // ReservableItem item  = (ReservableItem) readData(id, reserveditem.getKey());
+                // Trace.info("RM::deleteCustomer(" + id + ", " + customerID + ") has reserved " + reserveditem.getKey() + "which is reserved" +  item.getReserved() +  " times and is still available " + item.getCount() + " times"  );
+                // item.setReserved(item.getReserved()-reservedCount);
+                                    // item.setCount(item.getCount()+reservedCount);
+                        }
+                                
+                                // remove the customer from the storage
+                        rm_server.removeData(gi(o[1]), cust_d.getKey());
+                                
+                        Trace.info("RM::deleteCustomer(" + gi(o[1]) + ", " + gi(o[2]) + ") succeeded" );
+                        outToClient.println("true");
+                    } // if
                     break;
                 case "queryflight": //10
                     outToFlight.writeObject(message);
@@ -217,7 +283,7 @@ public class MiddleWareImplThread extends Thread
                     break;
                 case "reserveroom": //19
                     Customer cust_room = (Customer) rm_server.readData(gi(o[1]), Customer.getKey(gi(o[2])));
-                    String key_room = ("car-" + gi(o[3])).toLowerCase(); 
+                    String key_room = ("room-" + gi(o[3])).toLowerCase(); 
                     if ( cust_room == null ) {
                         Trace.warn("RM::reserveRoom( " + gi(o[1]) + ", " + gi(o[2]) + ", " + key_room + ", "+ gi(o[3])+")  failed--customer doesn't exist" );
                         outToClient.println("false");

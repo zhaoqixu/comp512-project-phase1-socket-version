@@ -486,6 +486,15 @@ public class ResourceManagerImpl
         }
         return true;
     }
+
+    public boolean update_rm(int id, int customerID, String reservedkey, int reservedCount) {
+        Trace.info("RM::deleteCustomer(" + id + ", " + customerID + ") has reserved " + reservedkey + " " +  reservedCount +  " times"  );
+        ReservableItem item  = (ReservableItem) readData(id, reservedkey);
+        Trace.info("RM::deleteCustomer(" + id + ", " + customerID + ") has reserved " + reservedkey + "which is reserved" +  item.getReserved() +  " times and is still available " + item.getCount() + " times"  );
+        item.setReserved(item.getReserved()-reservedCount);
+        item.setCount(item.getCount()+reservedCount);
+        return true;
+    }
     // Convert Object to int
     public int gi(Object temp) throws Exception {
         try {

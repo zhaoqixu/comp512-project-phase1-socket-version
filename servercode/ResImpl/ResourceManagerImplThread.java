@@ -171,6 +171,25 @@ public class ResourceManagerImplThread extends Thread
                     else
                         outToClient.println("false");
                     break;
+                case "updatecar":
+                    System.out.println("Zhiguai");
+                    if (rm_server.update_rm(gi(o[1]),gi(o[2]),gs(o[3]),gi(o[4])))
+                        outToClient.println("true");
+                    else
+                        outToClient.println("false");
+                    break;
+                case "updateflight":
+                    if (rm_server.update_rm(gi(o[1]),gi(o[2]),gs(o[3]),gi(o[4])))
+                        outToClient.println("true");
+                    else
+                        outToClient.println("false");
+                    break;
+                case "updateroom":
+                    if (rm_server.update_rm(gi(o[1]),gi(o[2]),gs(o[3]),gi(o[4])))
+                        outToClient.println("true");
+                    else
+                        outToClient.println("false");
+                    break;
             }
         }
         socket.close();
