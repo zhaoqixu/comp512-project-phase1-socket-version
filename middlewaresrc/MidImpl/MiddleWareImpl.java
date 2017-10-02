@@ -49,15 +49,16 @@ public class MiddleWareImpl
         ServerSocket serverSocket = new ServerSocket(8080);
 
         int port = 9090;
-        Socket socket_flight = new Socket(server_flgiht, port);
-        Socket socket_car = new Socket(server_car, port);
-        Socket socket_room = new Socket(server_room, port);
+        
 
         System.out.println("Middleware ready...");
 
         while (true)
         {
             Socket socket=serverSocket.accept();
+            Socket socket_flight = new Socket(server_flgiht, port);
+            Socket socket_car = new Socket(server_car, port);
+            Socket socket_room = new Socket(server_room, port);
             new MiddleWareImplThread(socket, socket_flight, socket_car, socket_room, rm_server).start();
         }
     }
