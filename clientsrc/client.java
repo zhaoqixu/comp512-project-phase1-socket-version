@@ -46,7 +46,7 @@ public class client
         }
         if (args.length > 2)
         {
-            System.out.println ("Usage: java client [rmihost [rmiport]]");
+            System.out.println ("Usage: java client [middleware server name]");
             System.exit(1);
         }
 
