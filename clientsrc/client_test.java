@@ -725,6 +725,7 @@ public class client_test
             System.out.println("The interface does not support this command.");
             break;
         }//end of switch
+        obj.megaQuery(obj, outToServer, inFromServer);
 
     }
     public Vector parse(String command)
